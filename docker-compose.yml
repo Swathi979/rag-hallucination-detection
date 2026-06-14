@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=sqlite:///./rag_system.db
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=["http://localhost:3000","http://frontend:3000"]
+    volumes:
+      - ./backend:/app
+      - ./data/embeddings:/app/embeddings
+      - ./data/documents:/app/documents
+      - ./data/reports:/app/reports
+    env_file:
+      - ./backend/.env
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_TIMEOUT=30000
+    depends_on:
+      - backend
+    networks:
+      - rag-network
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  embeddings:
+  documents:
+  reports:
